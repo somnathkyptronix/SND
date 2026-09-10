@@ -93,10 +93,18 @@ document.addEventListener("DOMContentLoaded", () => {
   let smoothedTime = 0;
   let videoArmed = false;
   let isSeeking = false;
+  let seekTimeout = null;
 
   if (video) {
-    video.addEventListener("seeking", () => { isSeeking = true; });
-    video.addEventListener("seeked", () => { isSeeking = false; });
+    video.addEventListener("seeking", () => {
+      isSeeking = true;
+      clearTimeout(seekTimeout);
+      seekTimeout = setTimeout(() => { isSeeking = false; }, 100);
+    });
+    video.addEventListener("seeked", () => {
+      isSeeking = false;
+      clearTimeout(seekTimeout);
+    });
   }
 
   // Unlock video playback for smooth scrubbing on both mobile and desktop
@@ -130,14 +138,13 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener(ev, armVideo, { passive: true, once: false });
   });
 
-  // Calculate scroll position
+  // Calculate scroll position (Zero layout reflow: use window.scrollY directly)
   const updateScroll = () => {
-    if (!hero) return;
-    const heroRect = hero.getBoundingClientRect();
-    targetProgress = clamp(-heroRect.top / Oy, 0, 1);
+    const scrollY = window.pageYOffset || window.scrollY || 0;
+    targetProgress = clamp(scrollY / Oy, 0, 1);
 
     // Navbar background on scroll past hero
-    if (window.scrollY > 60) {
+    if (scrollY > 60) {
       headerNav?.classList.add("scrolled");
     } else {
       headerNav?.classList.remove("scrolled");
@@ -171,16 +178,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (duration > 0) {
       const targetTime = targetProgress * duration;
       const isMobile = window.innerWidth <= 900;
-      const lerp = isMobile ? 0.22 : 0.15;
+      const lerp = isMobile ? 0.35 : 0.2;
       smoothedTime += (targetTime - smoothedTime) * lerp;
 
-      if (Math.abs(targetTime - smoothedTime) > 0.005 && !isSeeking) {
+      if (Math.abs(targetTime - smoothedTime) < 0.002) {
+        smoothedTime = targetTime;
+      }
+
+      const diff = Math.abs(video.currentTime - smoothedTime);
+      if (diff > 0.025 && !isSeeking) {
         try {
-          if ("fastSeek" in video && typeof video.fastSeek === "function") {
-            video.fastSeek(smoothedTime);
-          } else {
-            video.currentTime = smoothedTime;
-          }
+          video.currentTime = smoothedTime;
         } catch (err) {}
       }
     }
