@@ -2,8 +2,8 @@
 
 function getOy() {
   if (typeof window === "undefined") return 11000;
-  if (window.innerWidth <= 600) return 2200;
-  if (window.innerWidth <= 900) return 2600;
+  if (window.innerWidth <= 600) return 2000;
+  if (window.innerWidth <= 900) return 2400;
   return 11000;
 }
 
@@ -12,10 +12,10 @@ let Oy = getOy();
 function updateOy() {
   Oy = getOy();
 }
-window.addEventListener("resize", updateOy);
+window.addEventListener("resize", updateOy, { passive: true });
 window.addEventListener("orientationchange", () => {
   setTimeout(updateOy, 150);
-});
+}, { passive: true });
 updateOy();
 
 const captionsData = [
@@ -93,19 +93,65 @@ document.addEventListener("DOMContentLoaded", () => {
   let smoothedTime = 0;
   let videoArmed = false;
   let isSeeking = false;
-  let seekTimeout = null;
+  let lastSeekTime = 0;
+  let queuedSeekTime = null;
+  let seekSafetyTimeout = null;
 
-  if (video) {
-    video.addEventListener("seeking", () => {
-      isSeeking = true;
-      clearTimeout(seekTimeout);
-      seekTimeout = setTimeout(() => { isSeeking = false; }, 100);
-    });
-    video.addEventListener("seeked", () => {
+  // Rate-limited non-blocking seek engine
+  function performSeek(time) {
+    if (!video || !video.duration) return;
+    const now = performance.now();
+    const isMobile = window.innerWidth <= 900;
+    // Minimum interval: 90ms on mobile (~11 seeks/sec), 35ms on desktop (~28 seeks/sec)
+    const minInterval = isMobile ? 90 : 35;
+
+    if (isSeeking || (now - lastSeekTime < minInterval)) {
+      queuedSeekTime = time;
+      return;
+    }
+
+    if (Math.abs(video.currentTime - time) < 0.035) {
+      return;
+    }
+
+    isSeeking = true;
+    lastSeekTime = now;
+    queuedSeekTime = null;
+
+    clearTimeout(seekSafetyTimeout);
+    seekSafetyTimeout = setTimeout(() => {
       isSeeking = false;
-      clearTimeout(seekTimeout);
-    });
+      if (queuedSeekTime !== null) {
+        const next = queuedSeekTime;
+        queuedSeekTime = null;
+        performSeek(next);
+      }
+    }, isMobile ? 110 : 70);
+
+    try {
+      video.currentTime = time;
+    } catch (e) {
+      isSeeking = false;
+    }
   }
+
+  video?.addEventListener("seeked", () => {
+    isSeeking = false;
+    clearTimeout(seekSafetyTimeout);
+    if (queuedSeekTime !== null) {
+      const next = queuedSeekTime;
+      queuedSeekTime = null;
+      if (window.innerWidth <= 900) {
+        setTimeout(() => performSeek(next), 20);
+      } else {
+        performSeek(next);
+      }
+    }
+  });
+
+  video?.addEventListener("seeking", () => {
+    isSeeking = true;
+  });
 
   // Unlock video playback for smooth scrubbing on both mobile and desktop
   const armVideo = () => {
@@ -139,6 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Calculate scroll position (Zero layout reflow: use window.scrollY directly)
+  let scrollStopTimer = null;
+
   const updateScroll = () => {
     const scrollY = window.pageYOffset || window.scrollY || 0;
     targetProgress = clamp(scrollY / Oy, 0, 1);
@@ -149,19 +197,27 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       headerNav?.classList.remove("scrolled");
     }
+
+    // High-precision settle on scroll stop
+    clearTimeout(scrollStopTimer);
+    scrollStopTimer = setTimeout(() => {
+      if (video?.duration) {
+        performSeek(targetProgress * video.duration);
+      }
+    }, 90);
   };
 
   window.addEventListener("scroll", updateScroll, { passive: true });
   window.addEventListener("resize", () => {
     updateOy();
     updateScroll();
-  });
+  }, { passive: true });
   window.addEventListener("orientationchange", () => {
     setTimeout(() => {
       updateOy();
       updateScroll();
     }, 150);
-  });
+  }, { passive: true });
   updateScroll();
 
   // Hint button tap to arrive
@@ -172,10 +228,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Animation Loop (requestAnimationFrame with Lerp)
+  // Animation Loop (requestAnimationFrame with Lerp and Viewport Culling)
   function renderLoop() {
-    const duration = video?.duration || 0;
-    if (duration > 0) {
+    const scrollY = window.pageYOffset || window.scrollY || 0;
+    const isHeroVisible = scrollY <= Oy + window.innerHeight;
+
+    if (isHeroVisible && video?.duration) {
+      const duration = video.duration;
       const targetTime = targetProgress * duration;
       const isMobile = window.innerWidth <= 900;
       const lerp = isMobile ? 0.35 : 0.2;
@@ -185,27 +244,22 @@ document.addEventListener("DOMContentLoaded", () => {
         smoothedTime = targetTime;
       }
 
-      const diff = Math.abs(video.currentTime - smoothedTime);
-      if (diff > 0.025 && !isSeeking) {
-        try {
-          video.currentTime = smoothedTime;
-        } catch (err) {}
+      performSeek(smoothedTime);
+
+      // Update Captions
+      capElements.forEach((el, idx) => {
+        const capData = captionsData[idx];
+        if (!capData) return;
+        const opacity = calcCaptionOpacity(targetProgress, capData);
+        el.style.opacity = opacity;
+        el.style.transform = `translateY(${(1 - opacity) * 18}px)`;
+        el.style.pointerEvents = opacity > 0.5 ? "auto" : "none";
+      });
+
+      // Update Progress Bar
+      if (progressBar) {
+        progressBar.style.transform = `scaleX(${targetProgress})`;
       }
-    }
-
-    // Update Captions
-    capElements.forEach((el, idx) => {
-      const capData = captionsData[idx];
-      if (!capData) return;
-      const opacity = calcCaptionOpacity(targetProgress, capData);
-      el.style.opacity = opacity;
-      el.style.transform = `translateY(${(1 - opacity) * 20}px)`;
-      el.style.pointerEvents = opacity > 0.5 ? "auto" : "none";
-    });
-
-    // Update Progress Bar
-    if (progressBar) {
-      progressBar.style.transform = `scaleX(${targetProgress})`;
     }
 
     requestAnimationFrame(renderLoop);
