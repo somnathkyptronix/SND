@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en" data-st="2">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>SND — Cliffside Villa</title>
+    <meta name="description" content="From sea aerial to golden-hour terrace. A cinematic SND cliffside villa journey." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- Top Scroll Progress Indicator -->
+    <div class="progress" aria-hidden="true">
+      <span id="progress-bar"></span>
+    </div>
+
+    <!-- Fixed Header Navigation -->
+    <header class="nav hv-4" id="header-nav">
+      <a class="brand" href="#top" aria-label="SND Villa Home">
+        <span class="mark"></span>
+        SND <em>villa</em>
+      </a>
+      <nav class="links" aria-label="Primary Navigation">
+        <a href="#tower">The Villa</a>
+        <a href="#residences">Residences</a>
+        <a href="#amenities">The Estate</a>
+        <a href="#enquire">Enquire</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="#enquire" class="pill" data-action="enquire" id="nav-enquire-btn">Enquire</a>
+        <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle Navigation Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="mobile-drawer" id="mobile-drawer">
+      <a href="#tower">The Villa</a>
+      <a href="#residences">Residences</a>
+      <a href="#amenities">The Estate</a>
+      <a href="#enquire" data-action="enquire">Enquire</a>
+    </div>
+
+    <!-- Hero Section: Cinematic Video Scrubbing Stage -->
+    <section id="top" class="hero">
+      <div class="stage">
+        <video
+          id="hero-video"
+          src="./assets/experience.mp4"
+          muted
+          playsinline
+          webkit-playsinline
+          preload="auto"
+          aria-label="Cinematic drone flight across SND Villa"
+        ></video>
+        <div class="scrim"></div>
+
+        <!-- Captions (Controlled by Scroll Progress) -->
+        <div class="cap cap-center" id="cap-0">
+          <span class="eyebrow">SND · VILLA</span>
+          <h1>At the edge of the sea</h1>
+          <p>A cliffside residence where the land runs out and the view begins.</p>
+        </div>
+
+        <div class="cap cap-left" id="cap-1">
+          <span class="eyebrow">01 — THE COAST</span>
+          <h1>Where the cliff meets blue</h1>
+          <p>Carved into the rock, open to the horizon.</p>
+        </div>
+
+        <div class="cap cap-right" id="cap-2">
+          <span class="eyebrow">02 — THE POOL</span>
+          <h1>Swim to the horizon</h1>
+          <p>An infinity edge that meets the Mediterranean.</p>
+        </div>
+
+        <div class="cap cap-left" id="cap-3">
+          <span class="eyebrow">03 — INSIDE</span>
+          <h1>The sea, framed in glass</h1>
+          <p>Living spaces that dissolve into the view.</p>
+        </div>
+
+        <div class="cap cap-right" id="cap-4">
+          <span class="eyebrow">04 — THE SUITE</span>
+          <h1>Wake above the water</h1>
+          <p>A master suite that opens to the sea.</p>
+        </div>
+
+        <div class="cap cap-center" id="cap-5">
+          <span class="eyebrow">05 — THE TERRACE</span>
+          <h1>Golden hour, daily</h1>
+          <p>An evening at the edge of the world.</p>
+          <a href="#enquire" class="cta" data-action="enquire" id="hero-cta-btn">Arrange a Viewing →</a>
+        </div>
+
+        <div class="hint">
+          <span>Scroll to arrive</span>
+          <div class="hint-arrow"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- The Villa: Architectural Specification -->
+    <section id="tower" class="split">
+      <div class="split-copy">
+        <span class="eyebrow">The Villa</span>
+        <h2>A house with one wall removed.</h2>
+        <p>
+          Five bedrooms over three levels carved into the cliff, with retractable glass that opens the whole sea-facing
+          wall to the Mediterranean breeze.
+        </p>
+        <ul class="spec">
+          <li>
+            <b>620m²</b>
+            <span>interior</span>
+          </li>
+          <li>
+            <b>5</b>
+            <span>bedrooms</span>
+          </li>
+          <li>
+            <b>1,100m²</b>
+            <span>grounds</span>
+          </li>
+        </ul>
+      </div>
+      <div class="split-media m1" role="img" aria-label="SND Villa cliffside exterior facade"></div>
+    </section>
+
+    <!-- Residences: Pricing & Collection -->
+    <section id="residences" class="band">
+      <span class="eyebrow center">Residences</span>
+      <h2 class="center">Three ways to live on the cliff.</h2>
+      <div class="cards">
+        <article class="card">
+          <span class="eyebrow">5-bed cliffside</span>
+          <h3>The Sea Villa</h3>
+          <p class="price">From €6.4M</p>
+          <a href="#enquire" class="card-cta" data-action="enquire" data-residence="The Sea Villa">Discover →</a>
+        </article>
+
+        <article class="card">
+          <span class="eyebrow">Guest pavilion</span>
+          <h3>The Pool House</h3>
+          <p class="price">From €1.9M</p>
+          <a href="#enquire" class="card-cta" data-action="enquire" data-residence="The Pool House">Discover →</a>
+        </article>
+
+        <article class="card">
+          <span class="eyebrow">Both, combined</span>
+          <h3>The Estate</h3>
+          <p class="price">On request</p>
+          <a href="#enquire" class="card-cta" data-action="enquire" data-residence="The Estate">Discover →</a>
+        </article>
+      </div>
+    </section>
+
+    <!-- The Vista: Quote & Perspective -->
+    <section class="vista">
+      <div class="vista-bg" role="img" aria-label="Panoramic sea vista from SND Villa interior"></div>
+      <div class="vista-inner">
+        <span class="eyebrow center">The View</span>
+        <h2 class="center">
+          You don't look at the sea.<br />
+          You live inside it.
+        </h2>
+        <p class="center">Every room faces the water. Nothing faces back.</p>
+        <div class="figs">
+          <div>
+            <b>180°</b>
+            <span>sea views</span>
+          </div>
+          <div>
+            <b>25m</b>
+            <span>infinity pool</span>
+          </div>
+          <div>
+            <b>24/7</b>
+            <span>estate concierge</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- The Collection: Photo Gallery -->
+    <section id="gallery" class="gallery">
+      <span class="eyebrow center">The Collection</span>
+      <h2 class="center">Five views of life on the cliff.</h2>
+      <div class="grid">
+        <figure class="g1">
+          <figcaption>The coast</figcaption>
+        </figure>
+        <figure class="g2">
+          <figcaption>The pool</figcaption>
+        </figure>
+        <figure class="g3">
+          <figcaption>Interior light</figcaption>
+        </figure>
+        <figure class="g4">
+          <figcaption>The terrace at dusk</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- The Estate: Amenities & Seclusion -->
+    <section id="amenities" class="split reverse">
+      <div class="split-media m2" role="img" aria-label="SND Villa cliffside garden and estate architecture"></div>
+      <div class="split-copy">
+        <span class="eyebrow">The Estate</span>
+        <h2>A private world, sealed by the cliff.</h2>
+        <p>
+          Gated arrival, a wellness pavilion, a wine cellar in the rock, and direct sea access by private lift — a villa
+          that needs nothing beyond its own grounds.
+        </p>
+      </div>
+    </section>
+
+    <!-- Enquire CTA Band -->
+    <section id="enquire" class="cta-band">
+      <span class="eyebrow center">Enquire</span>
+      <h2 class="center">Arrange a private viewing.</h2>
+      <p class="center">By appointment only. Our directors will accompany you, level by level.</p>
+      <a href="#enquire" class="pill big gold-btn" data-action="enquire" id="main-enquire-cta">Request an appointment →</a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="foot">
+      <div class="foot-brand">
+        SND <em>villa</em>
+      </div>
+      <div class="foot-cols">
+        <div>
+          <h4>Residences</h4>
+          <a href="#enquire" data-action="enquire" data-residence="The Sea Villa">Sea Villa</a>
+          <a href="#enquire" data-action="enquire" data-residence="The Pool House">Pool House</a>
+          <a href="#enquire" data-action="enquire" data-residence="The Estate">The Estate</a>
+        </div>
+        <div>
+          <h4>The Villa</h4>
+          <a href="#tower">Architecture</a>
+          <a href="#amenities">The Estate</a>
+          <a href="#tower">Specifications</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="#enquire" data-action="enquire">Viewing</a>
+          <a href="#enquire" data-action="enquire">Sales</a>
+          <a href="#enquire" data-action="enquire">Press</a>
+        </div>
+      </div>
+      <div class="foot-base">
+        © 2026 SND. A cinematic concept by SOMNATH DAS.
+      </div>
+    </footer>
+
+    <!-- Private Viewing & Enquire Interactive Modal -->
+    <div class="modal-backdrop" id="viewing-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-dialog">
+        <button class="modal-close" id="modal-close" aria-label="Close dialog">✕</button>
+        <span class="eyebrow">Private Appointment</span>
+        <h3 id="modal-title">Arrange a Viewing</h3>
+        <p>Experience SND in person or via private director livestream. Please provide your preferred schedule.</p>
+
+        <form class="modal-form" id="viewing-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="first-name">First Name</label>
+              <input type="text" id="first-name" class="form-input" placeholder="Alexander" required />
+            </div>
+            <div class="form-group">
+              <label for="last-name">Last Name</label>
+              <input type="text" id="last-name" class="form-input" placeholder="Vance" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" class="form-input" placeholder="alexander@domain.com" required />
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone / WhatsApp</label>
+              <input type="tel" id="phone" class="form-input" placeholder="+33 6 12 34 56 78" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group custom-select-wrapper">
+              <label>Residence Interest</label>
+              <div class="custom-select" id="custom-residence-select">
+                <button type="button" class="custom-select-trigger" id="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span id="selected-residence-label">The Sea Villa (From €6.4M)</span>
+                  <span class="select-chevron">▾</span>
+                </button>
+                <div class="custom-select-dropdown" id="select-dropdown" role="listbox">
+                  <div class="custom-select-item selected" data-value="The Sea Villa" data-label="The Sea Villa (From €6.4M)" role="option" aria-selected="true">
+                    <span class="item-title">The Sea Villa</span>
+                    <span class="item-tag">From €6.4M</span>
+                  </div>
+                  <div class="custom-select-item" data-value="The Pool House" data-label="The Pool House (From €1.9M)" role="option" aria-selected="false">
+                    <span class="item-title">The Pool House</span>
+                    <span class="item-tag">From €1.9M</span>
+                  </div>
+                  <div class="custom-select-item" data-value="The Estate" data-label="The Estate (Combined)" role="option" aria-selected="false">
+                    <span class="item-title">The Estate</span>
+                    <span class="item-tag">Combined</span>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" name="residence" id="residence-choice" value="The Sea Villa" />
+            </div>
+            <div class="form-group">
+              <label for="viewing-date">Preferred Date</label>
+              <input type="date" id="viewing-date" class="form-input" required />
+            </div>
+          </div>
+
+          <button type="submit" class="modal-submit">Confirm Request →</button>
+        </form>
+
+        <div class="modal-success" id="modal-success">
+          <div class="success-icon">✓</div>
+          <h3>Viewing Requested</h3>
+          <p>
+            Thank you. Your dossier code is <strong id="booking-ref" style="color: var(--gold);">SND-882104</strong>.
+            A managing director will contact you within 2 hours to confirm your private viewing arrangements.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

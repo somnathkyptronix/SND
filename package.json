@@ -1,0 +1,16 @@
+{
+  "name": "snd-cliffside-villa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SND Cliffside Villa — Cinematic luxury real estate showcase",
+  "scripts": {
+    "dev": "node serve.js",
+    "build": "vite build --base=./",
+    "preview": "vite preview --port 4173",
+    "serve": "node serve.js"
+  },
+  "devDependencies": {
+    "vite": "^8.0.0"
+  }
+}
