@@ -38,12 +38,35 @@
       </div>
     </header>
 
-    <!-- Mobile Navigation Drawer -->
-    <div class="mobile-drawer" id="mobile-drawer">
-      <a href="#tower">The Villa</a>
-      <a href="#residences">Residences</a>
-      <a href="#amenities">The Estate</a>
-      <a href="#enquire" data-action="enquire">Enquire</a>
+    <!-- Mobile Navigation Drawer & Backdrop -->
+    <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" aria-hidden="true"></div>
+    <div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+      <div class="mobile-drawer-head">
+        <span class="eyebrow">Menu</span>
+        <button class="mobile-drawer-close" id="mobile-drawer-close" aria-label="Close Navigation Menu">✕</button>
+      </div>
+      <nav class="mobile-drawer-nav">
+        <a href="#tower" class="drawer-link">
+          <span class="drawer-num">01</span>
+          <span class="drawer-text">The Villa</span>
+        </a>
+        <a href="#residences" class="drawer-link">
+          <span class="drawer-num">02</span>
+          <span class="drawer-text">Residences</span>
+        </a>
+        <a href="#amenities" class="drawer-link">
+          <span class="drawer-num">03</span>
+          <span class="drawer-text">The Estate</span>
+        </a>
+        <a href="#gallery" class="drawer-link">
+          <span class="drawer-num">04</span>
+          <span class="drawer-text">Gallery</span>
+        </a>
+      </nav>
+      <div class="mobile-drawer-foot">
+        <a href="#enquire" class="pill gold-btn drawer-cta" data-action="enquire">Arrange Private Viewing →</a>
+        <p class="drawer-contact">Direct Inquiries: concierge@sndvilla.com</p>
+      </div>
     </div>
 
     <!-- Hero Section: Cinematic Video Scrubbing Stage -->
@@ -98,10 +121,10 @@
           <a href="#enquire" class="cta" data-action="enquire" id="hero-cta-btn">Arrange a Viewing →</a>
         </div>
 
-        <div class="hint">
+        <button class="hint" id="hero-hint-btn" aria-label="Scroll down to the villa">
           <span>Scroll to arrive</span>
           <div class="hint-arrow"></div>
-        </div>
+        </button>
       </div>
     </section>
 

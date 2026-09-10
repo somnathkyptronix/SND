@@ -1,49 +1,59 @@
 // SND Villa - Cinematic Scroll & Scrub Engine
 
-let Oy = typeof window !== "undefined" && window.innerWidth <= 900 ? 5500 : 11000;
+function getOy() {
+  if (typeof window === "undefined") return 11000;
+  if (window.innerWidth <= 600) return 2200;
+  if (window.innerWidth <= 900) return 2600;
+  return 11000;
+}
+
+let Oy = getOy();
 
 function updateOy() {
-  Oy = window.innerWidth <= 900 ? 5500 : 11000;
+  Oy = getOy();
 }
 window.addEventListener("resize", updateOy);
+window.addEventListener("orientationchange", () => {
+  setTimeout(updateOy, 150);
+});
 updateOy();
 
 const captionsData = [
   {
     from: 0,
-    to: 0.12,
+    to: 0.14,
     align: "center",
     eyebrow: "SND · VILLA",
     title: "At the edge of the sea",
     sub: "A cliffside residence where the land runs out and the view begins."
   },
   {
-    from: 0.15,
-    to: 0.27,
+    from: 0.16,
+    to: 0.29,
     align: "left",
     eyebrow: "01 — THE COAST",
     title: "Where the cliff meets blue",
     sub: "Carved into the rock, open to the horizon."
   },
   {
-    from: 0.3,
-    to: 0.43,
+    from: 0.31,
+    to: 0.44,
     align: "right",
     eyebrow: "02 — THE POOL",
     title: "Swim to the horizon",
     sub: "An infinity edge that meets the Mediterranean."
   },
   {
-    from: 0.46,
-    to: 0.58,
+    from: 0.47,
+    to: 0.59,
     align: "left",
     eyebrow: "03 — INSIDE",
     title: "The sea, framed in glass",
     sub: "Living spaces that dissolve into the view."
   },
   {
-    from: 0.61,
-    to: 0.74,
+    from: 0.62,
+    to: 0.75,
     align: "right",
     eyebrow: "04 — THE SUITE",
     title: "Wake above the water",
@@ -64,10 +74,10 @@ const clamp = (val, min = 0, max = 1) => Math.max(min, Math.min(max, val));
 const mapRange = (p, min, max) => clamp((p - min) / (max - min));
 
 function calcCaptionOpacity(progress, cap) {
-  if (progress < cap.from - 0.02 || progress > cap.to + 0.02) return 0;
+  if (progress < cap.from - 0.03 || progress > cap.to + 0.03) return 0;
   const range = cap.to - cap.from;
-  const fadeIn = cap.from <= 0.001 ? 1 : mapRange(progress, cap.from, cap.from + range * 0.22);
-  const fadeOut = cap.to >= 0.999 ? 1 : 1 - mapRange(progress, cap.to - range * 0.22, cap.to);
+  const fadeIn = cap.from <= 0.001 ? 1 : mapRange(progress, cap.from, cap.from + range * 0.24);
+  const fadeOut = cap.to >= 0.999 ? 1 : 1 - mapRange(progress, cap.to - range * 0.24, cap.to);
   return Math.max(0, Math.min(fadeIn, fadeOut));
 }
 
@@ -77,24 +87,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressBar = document.getElementById("progress-bar");
   const headerNav = document.getElementById("header-nav");
   const capElements = document.querySelectorAll(".cap");
+  const hintBtn = document.getElementById("hero-hint-btn");
 
   let targetProgress = 0;
   let smoothedTime = 0;
   let videoArmed = false;
-  let isVideoSeeking = false;
+  let isSeeking = false;
+
+  if (video) {
+    video.addEventListener("seeking", () => { isSeeking = true; });
+    video.addEventListener("seeked", () => { isSeeking = false; });
+  }
 
   // Unlock video playback for smooth scrubbing on both mobile and desktop
   const armVideo = () => {
     if (videoArmed || !video) return;
     video.muted = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
     const playPromise = video.play();
-    if (playPromise && playPromise.then) {
+    if (playPromise && typeof playPromise.then === "function") {
       playPromise
         .then(() => {
           video.pause();
           videoArmed = true;
         })
-        .catch(() => {});
+        .catch(() => {
+          videoArmed = true;
+        });
     } else {
       try {
         video.pause();
@@ -103,9 +125,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  video.addEventListener("loadeddata", armVideo);
+  video?.addEventListener("loadeddata", armVideo);
   ["pointerdown", "touchstart", "touchmove", "wheel", "keydown", "scroll"].forEach(ev => {
-    window.addEventListener(ev, armVideo, { passive: true });
+    window.addEventListener(ev, armVideo, { passive: true, once: false });
   });
 
   // Calculate scroll position
@@ -115,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     targetProgress = clamp(-heroRect.top / Oy, 0, 1);
 
     // Navbar background on scroll past hero
-    if (window.scrollY > 100) {
+    if (window.scrollY > 60) {
       headerNav?.classList.add("scrolled");
     } else {
       headerNav?.classList.remove("scrolled");
@@ -127,18 +149,38 @@ document.addEventListener("DOMContentLoaded", () => {
     updateOy();
     updateScroll();
   });
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => {
+      updateOy();
+      updateScroll();
+    }, 150);
+  });
   updateScroll();
+
+  // Hint button tap to arrive
+  hintBtn?.addEventListener("click", () => {
+    const tower = document.getElementById("tower");
+    if (tower) {
+      tower.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
 
   // Animation Loop (requestAnimationFrame with Lerp)
   function renderLoop() {
     const duration = video?.duration || 0;
-    if (duration > 0 && videoArmed) {
+    if (duration > 0) {
       const targetTime = targetProgress * duration;
-      smoothedTime += (targetTime - smoothedTime) * 0.15;
+      const isMobile = window.innerWidth <= 900;
+      const lerp = isMobile ? 0.22 : 0.15;
+      smoothedTime += (targetTime - smoothedTime) * lerp;
 
-      if (Math.abs(targetTime - smoothedTime) > 0.002 && !isVideoSeeking) {
+      if (Math.abs(targetTime - smoothedTime) > 0.005 && !isSeeking) {
         try {
-          video.currentTime = smoothedTime;
+          if ("fastSeek" in video && typeof video.fastSeek === "function") {
+            video.fastSeek(smoothedTime);
+          } else {
+            video.currentTime = smoothedTime;
+          }
         } catch (err) {}
       }
     }
@@ -149,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!capData) return;
       const opacity = calcCaptionOpacity(targetProgress, capData);
       el.style.opacity = opacity;
-      el.style.transform = `translateY(${(1 - opacity) * 26}px)`;
+      el.style.transform = `translateY(${(1 - opacity) * 20}px)`;
       el.style.pointerEvents = opacity > 0.5 ? "auto" : "none";
     });
 
@@ -174,7 +216,9 @@ document.addEventListener("DOMContentLoaded", () => {
 // Smooth Scroll Setup (Lenis on desktop + native smooth scroll on touch mobile)
 function initSmoothScroll() {
   let lenis = null;
-  const isFinePointer = window.matchMedia("(pointer: fine)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isFinePointer =
+    window.matchMedia("(pointer: fine)").matches &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (isFinePointer) {
     import("https://cdn.jsdelivr.net/npm/lenis@1.1.18/+esm")
@@ -212,11 +256,19 @@ function bindAnchorClicks(lenisInstance) {
         const target = document.querySelector(href);
         if (target) {
           e.preventDefault();
+
+          // Close mobile menu if open
           const drawer = document.getElementById("mobile-drawer");
-          if (drawer) drawer.classList.remove("active");
+          const backdrop = document.getElementById("mobile-drawer-backdrop");
+          const toggle = document.getElementById("mobile-toggle");
+          drawer?.classList.remove("active");
+          backdrop?.classList.remove("active");
+          toggle?.classList.remove("active");
+          toggle?.setAttribute("aria-expanded", "false");
+          document.body.style.overflow = "";
 
           if (lenisInstance) {
-            lenisInstance.scrollTo(target, { offset: 0, duration: 1.4 });
+            lenisInstance.scrollTo(target, { offset: 0, duration: 1.2 });
           } else {
             target.scrollIntoView({ behavior: "smooth", block: "start" });
           }
@@ -329,18 +381,54 @@ function initModal() {
   });
 }
 
-// Mobile Menu Drawer
+// Mobile Menu Drawer with Backdrop and Animation
 function initMobileMenu() {
   const toggle = document.getElementById("mobile-toggle");
   const drawer = document.getElementById("mobile-drawer");
+  const backdrop = document.getElementById("mobile-drawer-backdrop");
+  const closeBtn = document.getElementById("mobile-drawer-close");
 
-  toggle?.addEventListener("click", () => {
-    drawer?.classList.toggle("active");
+  function openDrawer() {
+    drawer?.classList.add("active");
+    backdrop?.classList.add("active");
+    toggle?.classList.add("active");
+    toggle?.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeDrawer() {
+    drawer?.classList.remove("active");
+    backdrop?.classList.remove("active");
+    toggle?.classList.remove("active");
+    toggle?.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+  }
+
+  toggle?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (drawer?.classList.contains("active")) {
+      closeDrawer();
+    } else {
+      openDrawer();
+    }
   });
+
+  closeBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeDrawer();
+  });
+
+  backdrop?.addEventListener("click", closeDrawer);
 
   drawer?.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
-      drawer.classList.remove("active");
+      closeDrawer();
     });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && drawer?.classList.contains("active")) {
+      closeDrawer();
+    }
   });
 }
