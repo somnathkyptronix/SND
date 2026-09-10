@@ -153,35 +153,26 @@ document.addEventListener("DOMContentLoaded", () => {
     isSeeking = true;
   });
 
-  // Unlock video playback for smooth scrubbing on both mobile and desktop
-  const armVideo = () => {
-    if (videoArmed || !video) return;
+  // Ensure video is actively playing and primed for continuous playback
+  const startVideoPlayback = () => {
+    if (!video) return;
     video.muted = true;
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
+    video.setAttribute("autoplay", "");
+    video.setAttribute("loop", "");
 
-    const playPromise = video.play();
-    if (playPromise && typeof playPromise.then === "function") {
-      playPromise
-        .then(() => {
-          video.pause();
-          videoArmed = true;
-        })
-        .catch(() => {
-          videoArmed = true;
-        });
-    } else {
-      try {
-        video.pause();
-      } catch (e) {}
-      videoArmed = true;
+    const p = video.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {});
     }
   };
 
-  video?.addEventListener("loadeddata", armVideo);
-  ["pointerdown", "touchstart", "touchmove", "wheel", "keydown", "scroll"].forEach(ev => {
-    window.addEventListener(ev, armVideo, { passive: true, once: false });
+  startVideoPlayback();
+  video?.addEventListener("loadeddata", startVideoPlayback);
+  ["pointerdown", "touchstart", "click", "scroll"].forEach(ev => {
+    window.addEventListener(ev, startVideoPlayback, { passive: true, once: true });
   });
 
   // Calculate scroll position (Zero layout reflow: use window.scrollY directly)
@@ -198,13 +189,24 @@ document.addEventListener("DOMContentLoaded", () => {
       headerNav?.classList.remove("scrolled");
     }
 
-    // High-precision settle on scroll stop
+    // High-precision settle on scroll stop for mobile chapter sync
     clearTimeout(scrollStopTimer);
     scrollStopTimer = setTimeout(() => {
       if (video?.duration) {
-        performSeek(targetProgress * video.duration);
+        const isMobile = window.innerWidth <= 900;
+        const targetTime = targetProgress * video.duration;
+        if (isMobile) {
+          if (Math.abs(video.currentTime - targetTime) > 1.0) {
+            try {
+              video.currentTime = targetTime;
+              video.play().catch(() => {});
+            } catch (e) {}
+          }
+        } else {
+          performSeek(targetTime);
+        }
       }
-    }, 90);
+    }, 80);
   };
 
   window.addEventListener("scroll", updateScroll, { passive: true });
@@ -237,14 +239,26 @@ document.addEventListener("DOMContentLoaded", () => {
       const duration = video.duration;
       const targetTime = targetProgress * duration;
       const isMobile = window.innerWidth <= 900;
-      const lerp = isMobile ? 0.35 : 0.2;
-      smoothedTime += (targetTime - smoothedTime) * lerp;
 
-      if (Math.abs(targetTime - smoothedTime) < 0.002) {
-        smoothedTime = targetTime;
+      // Make sure video is playing while inside hero
+      if (video.paused) {
+        video.play().catch(() => {});
       }
 
-      performSeek(smoothedTime);
+      if (isMobile) {
+        // Mobile: smooth chapter-seeking (never locks touch scroll)
+        if (Math.abs(video.currentTime - targetTime) > 1.8 && !isSeeking) {
+          performSeek(targetTime);
+        }
+      } else {
+        // Desktop: fine-grained frame scrubbing
+        const lerp = 0.22;
+        smoothedTime += (targetTime - smoothedTime) * lerp;
+        if (Math.abs(targetTime - smoothedTime) < 0.002) {
+          smoothedTime = targetTime;
+        }
+        performSeek(smoothedTime);
+      }
 
       // Update Captions
       capElements.forEach((el, idx) => {
@@ -260,6 +274,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (progressBar) {
         progressBar.style.transform = `scaleX(${targetProgress})`;
       }
+    } else if (video && !video.paused && scrollY > Oy + 300) {
+      // Pause video when scrolled completely past hero to preserve battery
+      video.pause();
     }
 
     requestAnimationFrame(renderLoop);

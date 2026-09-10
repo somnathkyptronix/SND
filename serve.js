@@ -38,13 +38,17 @@ const server = http.createServer((req, res) => {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     const range = req.headers.range;
 
-    // Handle Range Requests for smooth MP4 scrubbing
+    // Handle Range Requests for smooth MP4 streaming and scrubbing
     if (range && ext === '.mp4') {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
       const chunkSize = end - start + 1;
       const file = fs.createReadStream(filePath, { start, end });
+
+      req.on('close', () => {
+        try { file.destroy(); } catch (e) {}
+      });
 
       res.writeHead(206, {
         'Content-Range': `bytes ${start}-${end}/${stats.size}`,
@@ -61,7 +65,11 @@ const server = http.createServer((req, res) => {
         'Accept-Ranges': 'bytes',
         'Access-Control-Allow-Origin': '*',
       });
-      fs.createReadStream(filePath).pipe(res);
+      const file = fs.createReadStream(filePath);
+      req.on('close', () => {
+        try { file.destroy(); } catch (e) {}
+      });
+      file.pipe(res);
     }
   });
 });
