@@ -1261,8 +1261,8 @@ h1, h2, h3 {
 /* --- Media Queries --- */
 @media (max-width: 900px) {
   .hero {
-    height: calc(100vh + 2600px);
-    height: calc(100dvh + 2600px);
+    height: calc(100vh + 3400px);
+    height: calc(100dvh + 3400px);
   }
 
   .nav {
@@ -1501,8 +1501,8 @@ h1, h2, h3 {
 
 @media (max-width: 600px) {
   .hero {
-    height: calc(100vh + 2200px);
-    height: calc(100dvh + 2200px);
+    height: calc(100vh + 2600px);
+    height: calc(100dvh + 2600px);
   }
 
   .split-media {

@@ -1,9 +1,9 @@
-// SND Villa - Cinematic Scroll & Scrub Engine
+// SND Villa - Cinematic Motion Scroll & Scrub Engine
 
 function getOy() {
   if (typeof window === "undefined") return 11000;
-  if (window.innerWidth <= 600) return 2000;
-  if (window.innerWidth <= 900) return 2400;
+  if (window.innerWidth <= 600) return 2600;
+  if (window.innerWidth <= 900) return 3400;
   return 11000;
 }
 
@@ -93,91 +93,53 @@ document.addEventListener("DOMContentLoaded", () => {
   let smoothedTime = 0;
   let videoArmed = false;
   let isSeeking = false;
-  let lastSeekTime = 0;
-  let queuedSeekTime = null;
-  let seekSafetyTimeout = null;
+  let seekTimeout = null;
 
-  // Rate-limited non-blocking seek engine
-  function performSeek(time) {
-    if (!video || !video.duration) return;
-    const now = performance.now();
-    const isMobile = window.innerWidth <= 900;
-    // Minimum interval: 90ms on mobile (~11 seeks/sec), 35ms on desktop (~28 seeks/sec)
-    const minInterval = isMobile ? 90 : 35;
-
-    if (isSeeking || (now - lastSeekTime < minInterval)) {
-      queuedSeekTime = time;
-      return;
-    }
-
-    if (Math.abs(video.currentTime - time) < 0.035) {
-      return;
-    }
-
-    isSeeking = true;
-    lastSeekTime = now;
-    queuedSeekTime = null;
-
-    clearTimeout(seekSafetyTimeout);
-    seekSafetyTimeout = setTimeout(() => {
+  if (video) {
+    video.addEventListener("seeking", () => {
+      isSeeking = true;
+      clearTimeout(seekTimeout);
+      seekTimeout = setTimeout(() => { isSeeking = false; }, 70);
+    });
+    video.addEventListener("seeked", () => {
       isSeeking = false;
-      if (queuedSeekTime !== null) {
-        const next = queuedSeekTime;
-        queuedSeekTime = null;
-        performSeek(next);
-      }
-    }, isMobile ? 110 : 70);
-
-    try {
-      video.currentTime = time;
-    } catch (e) {
-      isSeeking = false;
-    }
+      clearTimeout(seekTimeout);
+    });
   }
 
-  video?.addEventListener("seeked", () => {
-    isSeeking = false;
-    clearTimeout(seekSafetyTimeout);
-    if (queuedSeekTime !== null) {
-      const next = queuedSeekTime;
-      queuedSeekTime = null;
-      if (window.innerWidth <= 900) {
-        setTimeout(() => performSeek(next), 20);
-      } else {
-        performSeek(next);
-      }
-    }
-  });
-
-  video?.addEventListener("seeking", () => {
-    isSeeking = true;
-  });
-
-  // Ensure video is actively playing and primed for continuous playback
-  const startVideoPlayback = () => {
-    if (!video) return;
+  // Mobile video warming (unlocks frame decoding on iOS/Android touch)
+  const armVideo = () => {
+    if (videoArmed || !video) return;
     video.muted = true;
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
-    video.setAttribute("autoplay", "");
-    video.setAttribute("loop", "");
 
-    const p = video.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(() => {});
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise
+        .then(() => {
+          video.pause();
+          videoArmed = true;
+        })
+        .catch(() => {
+          videoArmed = true;
+        });
+    } else {
+      try {
+        video.pause();
+      } catch (e) {}
+      videoArmed = true;
     }
   };
 
-  startVideoPlayback();
-  video?.addEventListener("loadeddata", startVideoPlayback);
-  ["pointerdown", "touchstart", "click", "scroll"].forEach(ev => {
-    window.addEventListener(ev, startVideoPlayback, { passive: true, once: true });
+  video?.addEventListener("loadedmetadata", armVideo);
+  video?.addEventListener("loadeddata", armVideo);
+  ["pointerdown", "touchstart", "touchmove", "wheel", "keydown", "scroll"].forEach(ev => {
+    window.addEventListener(ev, armVideo, { passive: true, once: true });
   });
 
   // Calculate scroll position (Zero layout reflow: use window.scrollY directly)
-  let scrollStopTimer = null;
-
   const updateScroll = () => {
     const scrollY = window.pageYOffset || window.scrollY || 0;
     targetProgress = clamp(scrollY / Oy, 0, 1);
@@ -188,25 +150,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       headerNav?.classList.remove("scrolled");
     }
-
-    // High-precision settle on scroll stop for mobile chapter sync
-    clearTimeout(scrollStopTimer);
-    scrollStopTimer = setTimeout(() => {
-      if (video?.duration) {
-        const isMobile = window.innerWidth <= 900;
-        const targetTime = targetProgress * video.duration;
-        if (isMobile) {
-          if (Math.abs(video.currentTime - targetTime) > 1.0) {
-            try {
-              video.currentTime = targetTime;
-              video.play().catch(() => {});
-            } catch (e) {}
-          }
-        } else {
-          performSeek(targetTime);
-        }
-      }
-    }, 80);
   };
 
   window.addEventListener("scroll", updateScroll, { passive: true });
@@ -230,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Animation Loop (requestAnimationFrame with Lerp and Viewport Culling)
+  // Animation Loop (requestAnimationFrame with Lerp Motion Scrubbing)
   function renderLoop() {
     const scrollY = window.pageYOffset || window.scrollY || 0;
     const isHeroVisible = scrollY <= Oy + window.innerHeight;
@@ -239,25 +182,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const duration = video.duration;
       const targetTime = targetProgress * duration;
       const isMobile = window.innerWidth <= 900;
+      
+      // Responsive lerp factor: snappy on mobile touch, silky on desktop mouse wheel
+      const lerp = isMobile ? 0.22 : 0.15;
+      smoothedTime += (targetTime - smoothedTime) * lerp;
 
-      // Make sure video is playing while inside hero
-      if (video.paused) {
-        video.play().catch(() => {});
+      if (Math.abs(targetTime - smoothedTime) < 0.003) {
+        smoothedTime = targetTime;
       }
 
-      if (isMobile) {
-        // Mobile: smooth chapter-seeking (never locks touch scroll)
-        if (Math.abs(video.currentTime - targetTime) > 1.8 && !isSeeking) {
-          performSeek(targetTime);
+      // Delta check against actual video currentTime (minimum 1 frame threshold ~0.028s)
+      const diff = Math.abs(video.currentTime - smoothedTime);
+      if (diff > 0.028 && !isSeeking) {
+        try {
+          isSeeking = true;
+          video.currentTime = smoothedTime;
+        } catch (err) {
+          isSeeking = false;
         }
-      } else {
-        // Desktop: fine-grained frame scrubbing
-        const lerp = 0.22;
-        smoothedTime += (targetTime - smoothedTime) * lerp;
-        if (Math.abs(targetTime - smoothedTime) < 0.002) {
-          smoothedTime = targetTime;
-        }
-        performSeek(smoothedTime);
       }
 
       // Update Captions
@@ -274,9 +216,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (progressBar) {
         progressBar.style.transform = `scaleX(${targetProgress})`;
       }
-    } else if (video && !video.paused && scrollY > Oy + 300) {
-      // Pause video when scrolled completely past hero to preserve battery
-      video.pause();
     }
 
     requestAnimationFrame(renderLoop);
