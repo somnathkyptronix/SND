@@ -2,8 +2,8 @@
 
 function getOy() {
   if (typeof window === "undefined") return 11000;
-  if (window.innerWidth <= 600) return 2600;
-  if (window.innerWidth <= 900) return 3400;
+  if (window.innerWidth <= 600) return 4000;
+  if (window.innerWidth <= 900) return 4600;
   return 11000;
 }
 
@@ -18,79 +18,19 @@ window.addEventListener("orientationchange", () => {
 }, { passive: true });
 updateOy();
 
-const captionsData = [
-  {
-    from: 0,
-    to: 0.14,
-    align: "center",
-    eyebrow: "SND · VILLA",
-    title: "At the edge of the sea",
-    sub: "A cliffside residence where the land runs out and the view begins."
-  },
-  {
-    from: 0.16,
-    to: 0.29,
-    align: "left",
-    eyebrow: "01 — THE COAST",
-    title: "Where the cliff meets blue",
-    sub: "Carved into the rock, open to the horizon."
-  },
-  {
-    from: 0.31,
-    to: 0.44,
-    align: "right",
-    eyebrow: "02 — THE POOL",
-    title: "Swim to the horizon",
-    sub: "An infinity edge that meets the Mediterranean."
-  },
-  {
-    from: 0.47,
-    to: 0.59,
-    align: "left",
-    eyebrow: "03 — INSIDE",
-    title: "The sea, framed in glass",
-    sub: "Living spaces that dissolve into the view."
-  },
-  {
-    from: 0.62,
-    to: 0.75,
-    align: "right",
-    eyebrow: "04 — THE SUITE",
-    title: "Wake above the water",
-    sub: "A master suite that opens to the sea."
-  },
-  {
-    from: 0.78,
-    to: 1.0,
-    align: "center",
-    eyebrow: "05 — THE TERRACE",
-    title: "Golden hour, daily",
-    sub: "An evening at the edge of the world.",
-    cta: "Arrange a Viewing"
-  }
-];
-
 const clamp = (val, min = 0, max = 1) => Math.max(min, Math.min(max, val));
-const mapRange = (p, min, max) => clamp((p - min) / (max - min));
-
-function calcCaptionOpacity(progress, cap) {
-  if (progress < cap.from - 0.03 || progress > cap.to + 0.03) return 0;
-  const range = cap.to - cap.from;
-  const fadeIn = cap.from <= 0.001 ? 1 : mapRange(progress, cap.from, cap.from + range * 0.24);
-  const fadeOut = cap.to >= 0.999 ? 1 : 1 - mapRange(progress, cap.to - range * 0.24, cap.to);
-  return Math.max(0, Math.min(fadeIn, fadeOut));
-}
 
 document.addEventListener("DOMContentLoaded", () => {
   const hero = document.getElementById("top");
   const video = document.getElementById("hero-video");
+  const bgLayers = document.querySelectorAll(".hero-bg-layer");
   const progressBar = document.getElementById("progress-bar");
   const headerNav = document.getElementById("header-nav");
   const capElements = document.querySelectorAll(".cap");
   const hintBtn = document.getElementById("hero-hint-btn");
 
   let targetProgress = 0;
-  let smoothedTime = 0;
+  let smoothedProgress = 0;
   let videoArmed = false;
   let isSeeking = false;
   let seekTimeout = null;
@@ -107,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Mobile video warming (unlocks frame decoding on iOS/Android touch)
+  // Desktop video warming
   const armVideo = () => {
     if (videoArmed || !video) return;
     video.muted = true;
@@ -139,12 +79,11 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener(ev, armVideo, { passive: true, once: true });
   });
 
-  // Calculate scroll position (Zero layout reflow: use window.scrollY directly)
+  // Zero-layout-reflow scroll listener
   const updateScroll = () => {
     const scrollY = window.pageYOffset || window.scrollY || 0;
     targetProgress = clamp(scrollY / Oy, 0, 1);
 
-    // Navbar background on scroll past hero
     if (scrollY > 60) {
       headerNav?.classList.add("scrolled");
     } else {
@@ -173,48 +112,89 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Animation Loop (requestAnimationFrame with Lerp Motion Scrubbing)
+  // High-Performance Dual-Engine: Silky Motion Images on Mobile, Scrub on Desktop
   function renderLoop() {
     const scrollY = window.pageYOffset || window.scrollY || 0;
     const isHeroVisible = scrollY <= Oy + window.innerHeight;
 
-    if (isHeroVisible && video?.duration) {
-      const duration = video.duration;
-      const targetTime = targetProgress * duration;
+    if (isHeroVisible) {
       const isMobile = window.innerWidth <= 900;
-      
-      // Responsive lerp factor: snappy on mobile touch, silky on desktop mouse wheel
-      const lerp = isMobile ? 0.22 : 0.15;
-      smoothedTime += (targetTime - smoothedTime) * lerp;
+      targetProgress = clamp(scrollY / Oy, 0, 1);
 
-      if (Math.abs(targetTime - smoothedTime) < 0.003) {
-        smoothedTime = targetTime;
+      // Liquid smooth momentum LERP for physical, buttery responsiveness
+      const lerpRate = isMobile ? 0.12 : 0.16;
+      smoothedProgress += (targetProgress - smoothedProgress) * lerpRate;
+      if (Math.abs(targetProgress - smoothedProgress) < 0.0003) {
+        smoothedProgress = targetProgress;
       }
 
-      // Delta check against actual video currentTime (minimum 1 frame threshold ~0.028s)
-      const diff = Math.abs(video.currentTime - smoothedTime);
-      if (diff > 0.028 && !isSeeking) {
-        try {
-          isSeeking = true;
-          video.currentTime = smoothedTime;
-        } catch (err) {
-          isSeeking = false;
+      if (isMobile && bgLayers.length > 0) {
+        // Continuous float index spanning 0.0 to 5.0 across the 6 luxury chapters
+        const floatIndex = clamp(smoothedProgress * 5, 0, 5);
+        const baseIndex = Math.min(4, Math.floor(floatIndex));
+        const t = floatIndex - baseIndex; // 0.0 -> 1.0 transition between chapter k and k+1
+
+        // Smoothstep cubic easing: zero harsh acceleration, organic dissolve
+        const easeT = t * t * (3 - 2 * t);
+
+        bgLayers.forEach((layer, idx) => {
+          let opacity = 0;
+
+          if (idx === baseIndex) {
+            // Active base layer remains 100% solid, guaranteeing zero black flash or dimming
+            opacity = 1;
+          } else if (idx === baseIndex + 1) {
+            // Incoming layer dissolves smoothly over the solid base layer
+            opacity = easeT;
+          } else {
+            opacity = 0;
+          }
+
+          layer.style.opacity = opacity.toFixed(4);
+
+          // Subtle cinematic Ken Burns drift & scale tied directly to scroll progression
+          if (opacity > 0.001) {
+            const localOffset = floatIndex - idx;
+            const scale = 1.05 + (localOffset * 0.024);
+            const panY = localOffset * -10;
+            layer.style.transform = `translate3d(0, ${panY.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
+            layer.style.visibility = "visible";
+          } else {
+            layer.style.visibility = "hidden";
+          }
+        });
+      } else if (video?.duration) {
+        // Desktop Engine: Frame-accurate video motion scrubbing with lerp
+        const duration = video.duration;
+        const targetTime = smoothedProgress * duration;
+        const diff = Math.abs(video.currentTime - targetTime);
+        if (diff > 0.028 && !isSeeking) {
+          try {
+            isSeeking = true;
+            video.currentTime = targetTime;
+          } catch (err) {
+            isSeeking = false;
+          }
         }
       }
 
-      // Update Captions
+      // Synchronize Captions with exact chapter alignment
+      const captionFloat = clamp(smoothedProgress * 5, 0, 5);
       capElements.forEach((el, idx) => {
-        const capData = captionsData[idx];
-        if (!capData) return;
-        const opacity = calcCaptionOpacity(targetProgress, capData);
-        el.style.opacity = opacity;
-        el.style.transform = `translateY(${(1 - opacity) * 18}px)`;
+        const dist = Math.abs(captionFloat - idx);
+        let opacity = 0;
+        if (dist < 0.55) {
+          const raw = 1 - (dist / 0.55);
+          opacity = raw * raw * (3 - 2 * raw);
+        }
+        el.style.opacity = opacity.toFixed(4);
+        el.style.transform = `translate3d(0, ${((1 - opacity) * 20).toFixed(1)}px, 0)`;
         el.style.pointerEvents = opacity > 0.5 ? "auto" : "none";
       });
 
-      // Update Progress Bar
+      // Synchronize Progress Bar
       if (progressBar) {
-        progressBar.style.transform = `scaleX(${targetProgress})`;
+        progressBar.style.transform = `scaleX(${smoothedProgress.toFixed(4)})`;
       }
     }
 

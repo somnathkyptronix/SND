@@ -9,6 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="preload" as="image" href="./assets/facade.jpg" />
+    <link rel="preload" as="image" href="./assets/g1.jpg" />
+    <link rel="preload" as="image" href="./assets/g2.jpg" />
+    <link rel="preload" as="image" href="./assets/g3.jpg" />
+    <link rel="preload" as="image" href="./assets/interior.jpg" />
+    <link rel="preload" as="image" href="./assets/g4.jpg" />
   </head>
   <body>
     <!-- Top Scroll Progress Indicator -->
@@ -81,6 +87,15 @@
           preload="auto"
           aria-label="Cinematic drone flight across SND Villa"
         ></video>
+        <!-- Motion Scroll Background Image Layers (Ultra-Smooth Mobile Engine) -->
+        <div class="hero-bg-layers" id="hero-bg-layers" aria-hidden="true">
+          <div class="hero-bg-layer" id="bg-0" style="background-image: url('./assets/facade.jpg');"></div>
+          <div class="hero-bg-layer" id="bg-1" style="background-image: url('./assets/g1.jpg');"></div>
+          <div class="hero-bg-layer" id="bg-2" style="background-image: url('./assets/g2.jpg');"></div>
+          <div class="hero-bg-layer" id="bg-3" style="background-image: url('./assets/g3.jpg');"></div>
+          <div class="hero-bg-layer" id="bg-4" style="background-image: url('./assets/interior.jpg');"></div>
+          <div class="hero-bg-layer" id="bg-5" style="background-image: url('./assets/g4.jpg');"></div>
+        </div>
         <div class="scrim"></div>
 
         <!-- Captions (Controlled by Scroll Progress) -->
