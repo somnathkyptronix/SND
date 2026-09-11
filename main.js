@@ -35,12 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let pendingSeekTime = null;
   let seekTimeout = null;
 
-  // Ultra-Responsive Non-Blocking Video Motion Engine (Instant Mobile Seeking)
+  // Ultra-Responsive Non-Blocking Video Motion Engine (Hardware-Accelerated Mobile Seeking)
   function performSeek(time) {
     if (!video || !video.duration) return;
 
     const diff = Math.abs(video.currentTime - time);
-    if (diff < 0.015) return;
+    if (diff < 0.02) return;
 
     if (isSeeking) {
       pendingSeekTime = time;
@@ -49,7 +49,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     isSeeking = true;
     try {
-      video.currentTime = time;
+      if (typeof video.fastSeek === "function") {
+        video.fastSeek(time);
+      } else {
+        video.currentTime = time;
+      }
     } catch (err) {
       isSeeking = false;
     }
@@ -62,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pendingSeekTime = null;
         performSeek(next);
       }
-    }, 38);
+    }, 45);
   }
 
   if (video) {
@@ -79,31 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
     video.addEventListener("seeking", () => {
       isSeeking = true;
     });
-
-    // Hardware frame presentation callback for zero-latency frame unlocks
-    if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
-      const onVFrame = () => {
-        isSeeking = false;
-        if (pendingSeekTime !== null) {
-          const next = pendingSeekTime;
-          pendingSeekTime = null;
-          performSeek(next);
-        }
-        video.requestVideoFrameCallback(onVFrame);
-      };
-      video.requestVideoFrameCallback(onVFrame);
-    }
-
-    // Pre-cache video into local RAM blob to eliminate all network latency during scrubbing
-    fetch('./assets/experience.mp4')
-      .then(r => r.blob())
-      .then(blob => {
-        const currentT = video.currentTime;
-        const blobUrl = URL.createObjectURL(blob);
-        video.src = blobUrl;
-        video.currentTime = currentT;
-      })
-      .catch(() => {});
   }
 
   // Mobile & Desktop Hardware Decoder Warming
