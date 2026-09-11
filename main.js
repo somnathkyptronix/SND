@@ -2,8 +2,8 @@
 
 function getOy() {
   if (typeof window === "undefined") return 11000;
-  if (window.innerWidth <= 600) return 5500;
-  if (window.innerWidth <= 900) return 7000;
+  if (window.innerWidth <= 600) return 4000;
+  if (window.innerWidth <= 900) return 5500;
   return 11000;
 }
 
@@ -35,12 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let pendingSeekTime = null;
   let seekTimeout = null;
 
-  // Ultra-Smooth Non-Blocking Video Motion Engine (Zero Decoder Lag on Mobile)
+  // Ultra-Responsive Non-Blocking Video Motion Engine (Instant Mobile Seeking)
   function performSeek(time) {
     if (!video || !video.duration) return;
 
     const diff = Math.abs(video.currentTime - time);
-    if (diff < 0.024) return;
+    if (diff < 0.015) return;
 
     if (isSeeking) {
       pendingSeekTime = time;
@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pendingSeekTime = null;
         performSeek(next);
       }
-    }, 80);
+    }, 38);
   }
 
   if (video) {
@@ -79,6 +79,31 @@ document.addEventListener("DOMContentLoaded", () => {
     video.addEventListener("seeking", () => {
       isSeeking = true;
     });
+
+    // Hardware frame presentation callback for zero-latency frame unlocks
+    if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+      const onVFrame = () => {
+        isSeeking = false;
+        if (pendingSeekTime !== null) {
+          const next = pendingSeekTime;
+          pendingSeekTime = null;
+          performSeek(next);
+        }
+        video.requestVideoFrameCallback(onVFrame);
+      };
+      video.requestVideoFrameCallback(onVFrame);
+    }
+
+    // Pre-cache video into local RAM blob to eliminate all network latency during scrubbing
+    fetch('./assets/experience.mp4')
+      .then(r => r.blob())
+      .then(blob => {
+        const currentT = video.currentTime;
+        const blobUrl = URL.createObjectURL(blob);
+        video.src = blobUrl;
+        video.currentTime = currentT;
+      })
+      .catch(() => {});
   }
 
   // Mobile & Desktop Hardware Decoder Warming
@@ -157,9 +182,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isHeroVisible) {
       targetProgress = clamp(scrollY / Oy, 0, 1);
 
-      // Buttery momentum smoothing for true desktop-quality motion on mobile touch
+      // Instant finger-tracking on mobile (lerp 0.35) + cinematic inertia on desktop (0.15)
       const isMobile = window.innerWidth <= 900;
-      const lerpRate = isMobile ? 0.16 : 0.14;
+      const lerpRate = isMobile ? 0.35 : 0.15;
       smoothedProgress += (targetProgress - smoothedProgress) * lerpRate;
       if (Math.abs(targetProgress - smoothedProgress) < 0.0002) {
         smoothedProgress = targetProgress;

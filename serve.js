@@ -56,14 +56,17 @@ const server = http.createServer((req, res) => {
         'Content-Length': chunkSize,
         'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=31536000, immutable',
       });
       file.pipe(res);
     } else {
+      const cacheHeader = ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable';
       res.writeHead(200, {
         'Content-Length': stats.size,
         'Content-Type': contentType,
         'Accept-Ranges': 'bytes',
         'Access-Control-Allow-Origin': '*',
+        'Cache-Control': cacheHeader,
       });
       const file = fs.createReadStream(filePath);
       req.on('close', () => {
