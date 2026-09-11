@@ -1304,16 +1304,16 @@ h1, h2, h3 {
 /* --- Media Queries --- */
 @media (max-width: 900px) {
   .hero {
-    height: calc(100vh + 4600px);
-    height: calc(100dvh + 4600px);
+    height: calc(100vh + 7000px);
+    height: calc(100dvh + 7000px);
   }
 
   .stage video {
-    display: none !important;
+    display: block !important;
   }
 
   .hero-bg-layers {
-    display: block;
+    display: none !important;
   }
 
   .nav {
@@ -1552,8 +1552,8 @@ h1, h2, h3 {
 
 @media (max-width: 600px) {
   .hero {
-    height: calc(100vh + 4000px);
-    height: calc(100dvh + 4000px);
+    height: calc(100vh + 5500px);
+    height: calc(100dvh + 5500px);
   }
 
   .split-media {

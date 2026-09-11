@@ -2,8 +2,8 @@
 
 function getOy() {
   if (typeof window === "undefined") return 11000;
-  if (window.innerWidth <= 600) return 4000;
-  if (window.innerWidth <= 900) return 4600;
+  if (window.innerWidth <= 600) return 5500;
+  if (window.innerWidth <= 900) return 7000;
   return 11000;
 }
 
@@ -23,7 +23,6 @@ const clamp = (val, min = 0, max = 1) => Math.max(min, Math.min(max, val));
 document.addEventListener("DOMContentLoaded", () => {
   const hero = document.getElementById("top");
   const video = document.getElementById("hero-video");
-  const bgLayers = document.querySelectorAll(".hero-bg-layer");
   const progressBar = document.getElementById("progress-bar");
   const headerNav = document.getElementById("header-nav");
   const capElements = document.querySelectorAll(".cap");
@@ -33,21 +32,56 @@ document.addEventListener("DOMContentLoaded", () => {
   let smoothedProgress = 0;
   let videoArmed = false;
   let isSeeking = false;
+  let pendingSeekTime = null;
   let seekTimeout = null;
 
+  // Ultra-Smooth Non-Blocking Video Motion Engine (Zero Decoder Lag on Mobile)
+  function performSeek(time) {
+    if (!video || !video.duration) return;
+
+    const diff = Math.abs(video.currentTime - time);
+    if (diff < 0.024) return;
+
+    if (isSeeking) {
+      pendingSeekTime = time;
+      return;
+    }
+
+    isSeeking = true;
+    try {
+      video.currentTime = time;
+    } catch (err) {
+      isSeeking = false;
+    }
+
+    clearTimeout(seekTimeout);
+    seekTimeout = setTimeout(() => {
+      isSeeking = false;
+      if (pendingSeekTime !== null) {
+        const next = pendingSeekTime;
+        pendingSeekTime = null;
+        performSeek(next);
+      }
+    }, 80);
+  }
+
   if (video) {
-    video.addEventListener("seeking", () => {
-      isSeeking = true;
-      clearTimeout(seekTimeout);
-      seekTimeout = setTimeout(() => { isSeeking = false; }, 70);
-    });
     video.addEventListener("seeked", () => {
       isSeeking = false;
       clearTimeout(seekTimeout);
+      if (pendingSeekTime !== null) {
+        const next = pendingSeekTime;
+        pendingSeekTime = null;
+        performSeek(next);
+      }
+    });
+
+    video.addEventListener("seeking", () => {
+      isSeeking = true;
     });
   }
 
-  // Desktop video warming
+  // Mobile & Desktop Hardware Decoder Warming
   const armVideo = () => {
     if (videoArmed || !video) return;
     video.muted = true;
@@ -61,6 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
         .then(() => {
           video.pause();
           videoArmed = true;
+          if (video.duration) {
+            performSeek(smoothedProgress * video.duration);
+          }
         })
         .catch(() => {
           videoArmed = true;
@@ -112,70 +149,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // High-Performance Dual-Engine: Silky Motion Images on Mobile, Scrub on Desktop
+  // Continuous Cinematic Video Motion Scrubbing Loop
   function renderLoop() {
     const scrollY = window.pageYOffset || window.scrollY || 0;
     const isHeroVisible = scrollY <= Oy + window.innerHeight;
 
     if (isHeroVisible) {
-      const isMobile = window.innerWidth <= 900;
       targetProgress = clamp(scrollY / Oy, 0, 1);
 
-      // Liquid smooth momentum LERP for physical, buttery responsiveness
-      const lerpRate = isMobile ? 0.12 : 0.16;
+      // Buttery momentum smoothing for true desktop-quality motion on mobile touch
+      const isMobile = window.innerWidth <= 900;
+      const lerpRate = isMobile ? 0.16 : 0.14;
       smoothedProgress += (targetProgress - smoothedProgress) * lerpRate;
-      if (Math.abs(targetProgress - smoothedProgress) < 0.0003) {
+      if (Math.abs(targetProgress - smoothedProgress) < 0.0002) {
         smoothedProgress = targetProgress;
       }
 
-      if (isMobile && bgLayers.length > 0) {
-        // Continuous float index spanning 0.0 to 5.0 across the 6 luxury chapters
-        const floatIndex = clamp(smoothedProgress * 5, 0, 5);
-        const baseIndex = Math.min(4, Math.floor(floatIndex));
-        const t = floatIndex - baseIndex; // 0.0 -> 1.0 transition between chapter k and k+1
-
-        // Smoothstep cubic easing: zero harsh acceleration, organic dissolve
-        const easeT = t * t * (3 - 2 * t);
-
-        bgLayers.forEach((layer, idx) => {
-          let opacity = 0;
-
-          if (idx === baseIndex) {
-            // Active base layer remains 100% solid, guaranteeing zero black flash or dimming
-            opacity = 1;
-          } else if (idx === baseIndex + 1) {
-            // Incoming layer dissolves smoothly over the solid base layer
-            opacity = easeT;
-          } else {
-            opacity = 0;
-          }
-
-          layer.style.opacity = opacity.toFixed(4);
-
-          // Subtle cinematic Ken Burns drift & scale tied directly to scroll progression
-          if (opacity > 0.001) {
-            const localOffset = floatIndex - idx;
-            const scale = 1.05 + (localOffset * 0.024);
-            const panY = localOffset * -10;
-            layer.style.transform = `translate3d(0, ${panY.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
-            layer.style.visibility = "visible";
-          } else {
-            layer.style.visibility = "hidden";
-          }
-        });
-      } else if (video?.duration) {
-        // Desktop Engine: Frame-accurate video motion scrubbing with lerp
-        const duration = video.duration;
-        const targetTime = smoothedProgress * duration;
-        const diff = Math.abs(video.currentTime - targetTime);
-        if (diff > 0.028 && !isSeeking) {
-          try {
-            isSeeking = true;
-            video.currentTime = targetTime;
-          } catch (err) {
-            isSeeking = false;
-          }
-        }
+      // Continuous drone camera motion scrub
+      if (video?.duration) {
+        const targetTime = smoothedProgress * video.duration;
+        performSeek(targetTime);
       }
 
       // Synchronize Captions with exact chapter alignment
