@@ -2,9 +2,8 @@
 
 function getOy() {
   if (typeof window === "undefined") return 11000;
-  if (window.innerWidth <= 600) return 4000;
-  if (window.innerWidth <= 900) return 5500;
-  return 11000;
+  if (window.innerWidth <= 1024) return 0; // Mobile & tablet: 100svh hero flows naturally
+  return 11000; // Desktop: Full 11000px cinematic scrub stage
 }
 
 let Oy = getOy();
@@ -30,12 +29,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let targetProgress = 0;
   let smoothedProgress = 0;
-  let videoArmed = false;
   let isSeeking = false;
   let pendingSeekTime = null;
   let seekTimeout = null;
 
-  // Ultra-Responsive Non-Blocking Video Motion Engine (Hardware-Accelerated Mobile Seeking)
+  // Desktop Video Scrub Engine
   function performSeek(time) {
     if (!video || !video.duration) return;
 
@@ -49,11 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     isSeeking = true;
     try {
-      if (typeof video.fastSeek === "function") {
-        video.fastSeek(time);
-      } else {
-        video.currentTime = time;
-      }
+      video.currentTime = time;
     } catch (err) {
       isSeeking = false;
     }
@@ -85,45 +79,56 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Mobile & Desktop Hardware Decoder Warming
-  const armVideo = () => {
-    if (videoArmed || !video) return;
+  // Mobile / Desktop Video Initialization
+  const setupVideo = () => {
+    if (!video) return;
     video.muted = true;
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
 
-    const playPromise = video.play();
-    if (playPromise && typeof playPromise.then === "function") {
-      playPromise
-        .then(() => {
-          video.pause();
-          videoArmed = true;
-          if (video.duration) {
-            performSeek(smoothedProgress * video.duration);
-          }
-        })
-        .catch(() => {
-          videoArmed = true;
-        });
+    const isMobileOrTablet = window.innerWidth <= 1024;
+    if (isMobileOrTablet) {
+      // Mobile: Continuous smooth native video playback
+      video.loop = true;
+      video.setAttribute("loop", "");
+      video.play().catch(() => {});
     } else {
-      try {
-        video.pause();
-      } catch (e) {}
-      videoArmed = true;
+      // Desktop: Prepare for frame-accurate scroll scrubbing
+      video.loop = false;
+      video.removeAttribute("loop");
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise
+          .then(() => {
+            video.pause();
+            if (video.duration) {
+              performSeek(smoothedProgress * video.duration);
+            }
+          })
+          .catch(() => {});
+      }
     }
   };
 
-  video?.addEventListener("loadedmetadata", armVideo);
-  video?.addEventListener("loadeddata", armVideo);
+  video?.addEventListener("loadedmetadata", setupVideo);
+  video?.addEventListener("loadeddata", setupVideo);
   ["pointerdown", "touchstart", "touchmove", "wheel", "keydown", "scroll"].forEach(ev => {
-    window.addEventListener(ev, armVideo, { passive: true, once: true });
+    window.addEventListener(ev, setupVideo, { passive: true, once: true });
   });
+  setupVideo();
 
-  // Zero-layout-reflow scroll listener
+  // Scroll listener
   const updateScroll = () => {
     const scrollY = window.pageYOffset || window.scrollY || 0;
-    targetProgress = clamp(scrollY / Oy, 0, 1);
+    const isMobileOrTablet = window.innerWidth <= 1024;
+
+    if (isMobileOrTablet) {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      targetProgress = docHeight > 0 ? clamp(scrollY / docHeight, 0, 1) : 0;
+    } else {
+      targetProgress = Oy > 0 ? clamp(scrollY / Oy, 0, 1) : 0;
+    }
 
     if (scrollY > 60) {
       headerNav?.classList.add("scrolled");
@@ -136,16 +141,18 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", () => {
     updateOy();
     updateScroll();
+    setupVideo();
   }, { passive: true });
   window.addEventListener("orientationchange", () => {
     setTimeout(() => {
       updateOy();
       updateScroll();
+      setupVideo();
     }, 150);
   }, { passive: true });
   updateScroll();
 
-  // Hint button tap to arrive
+  // Hint button tap to arrive at The Villa
   hintBtn?.addEventListener("click", () => {
     const tower = document.getElementById("tower");
     if (tower) {
@@ -153,45 +160,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Continuous Cinematic Video Motion Scrubbing Loop
+  // Animation Loop: Scrubbing on Desktop, Clean Autoplay on Mobile
   function renderLoop() {
     const scrollY = window.pageYOffset || window.scrollY || 0;
-    const isHeroVisible = scrollY <= Oy + window.innerHeight;
+    const isMobileOrTablet = window.innerWidth <= 1024;
 
-    if (isHeroVisible) {
-      targetProgress = clamp(scrollY / Oy, 0, 1);
-
-      // Instant finger-tracking on mobile (lerp 0.35) + cinematic inertia on desktop (0.15)
-      const isMobile = window.innerWidth <= 900;
-      const lerpRate = isMobile ? 0.35 : 0.15;
-      smoothedProgress += (targetProgress - smoothedProgress) * lerpRate;
-      if (Math.abs(targetProgress - smoothedProgress) < 0.0002) {
-        smoothedProgress = targetProgress;
+    if (isMobileOrTablet) {
+      // Mobile: Ensure video is playing fluidly in loop
+      if (video && video.paused && !video.ended) {
+        video.play().catch(() => {});
       }
 
-      // Continuous drone camera motion scrub
-      if (video?.duration) {
-        const targetTime = smoothedProgress * video.duration;
-        performSeek(targetTime);
-      }
-
-      // Synchronize Captions with exact chapter alignment
-      const captionFloat = clamp(smoothedProgress * 5, 0, 5);
-      capElements.forEach((el, idx) => {
-        const dist = Math.abs(captionFloat - idx);
-        let opacity = 0;
-        if (dist < 0.55) {
-          const raw = 1 - (dist / 0.55);
-          opacity = raw * raw * (3 - 2 * raw);
-        }
-        el.style.opacity = opacity.toFixed(4);
-        el.style.transform = `translate3d(0, ${((1 - opacity) * 20).toFixed(1)}px, 0)`;
-        el.style.pointerEvents = opacity > 0.5 ? "auto" : "none";
-      });
-
-      // Synchronize Progress Bar
+      // Progress bar tracks page scroll
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? clamp(scrollY / docHeight, 0, 1) : 0;
       if (progressBar) {
-        progressBar.style.transform = `scaleX(${smoothedProgress.toFixed(4)})`;
+        progressBar.style.transform = `scaleX(${progress.toFixed(4)})`;
+      }
+    } else {
+      // Desktop: Frame-Accurate Video Scrub Engine
+      const isHeroVisible = scrollY <= Oy + window.innerHeight;
+
+      if (isHeroVisible) {
+        targetProgress = clamp(scrollY / Oy, 0, 1);
+
+        // Smooth desktop momentum
+        smoothedProgress += (targetProgress - smoothedProgress) * 0.15;
+        if (Math.abs(targetProgress - smoothedProgress) < 0.0002) {
+          smoothedProgress = targetProgress;
+        }
+
+        if (video?.duration) {
+          const targetTime = smoothedProgress * video.duration;
+          performSeek(targetTime);
+        }
+
+        // Synchronize Desktop Captions
+        const captionFloat = clamp(smoothedProgress * 5, 0, 5);
+        capElements.forEach((el, idx) => {
+          const dist = Math.abs(captionFloat - idx);
+          let opacity = 0;
+          if (dist < 0.55) {
+            const raw = 1 - (dist / 0.55);
+            opacity = raw * raw * (3 - 2 * raw);
+          }
+          el.style.opacity = opacity.toFixed(4);
+          el.style.transform = `translate3d(0, ${((1 - opacity) * 20).toFixed(1)}px, 0)`;
+          el.style.pointerEvents = opacity > 0.5 ? "auto" : "none";
+        });
+
+        // Synchronize Desktop Progress Bar
+        if (progressBar) {
+          progressBar.style.transform = `scaleX(${smoothedProgress.toFixed(4)})`;
+        }
       }
     }
 
